@@ -1,0 +1,21 @@
+{
+  "parser": "babel-eslint",
+  "extends": "airbnb",
+  "env": {
+    "mocha": true
+  },
+  "rules": {
+    "comma-dangle": ["error", "only-multiline"],
+    "object-curly-spacing": "off",
+    "object-curly-newline": "off",
+    "quotes": "off",
+    "no-trailing-spaces": "off",
+    "space-infix-ops": 0,
+    "no-shadow": 1,
+    "max-len": 0,
+    "import/no-named-as-default-member": 0,
+    "no-param-reassign": 0,
+    "prefer-const": 0,
+    "no-useless-escape": 0
+  }
+}
