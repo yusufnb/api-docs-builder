@@ -3,12 +3,19 @@ Author: Yusuf Bhabhrawala
  */
 const _ = require("lodash");
 
-function toSchema(str) {
-  const schema = { type: "object" };
+function toSchema(str, isArray = false) {
   str = str.replace(/ /g, "");
-  const matches = str.match(/^\{(.+)\}$/);
-  if (!matches) throw new Error(`Invalid schema: ${str}`);
-  schema.properties = matches[1].split(",").reduce((acc, curr) => {
+
+  let matches;
+
+  matches = str.match(/^\[(.+)\]$/);
+  if (matches) { str = matches[1]; isArray = true; }
+
+  matches = str.match(/^\{(.+)\}$/);
+  if (matches) str = matches[1];
+
+  const schema = { type: "object" };
+  schema.properties = str.split(",").reduce((acc, curr) => {
     let [key, type, def] = curr.split(":");
     let required = null;
     if (type && type.match(/^\?/)) {
@@ -26,7 +33,8 @@ function toSchema(str) {
     // acc = {type,default,required}
     return acc;
   }, {});
-  return schema;
+  if (isArray) return { type: "array", items: schema };
+  else return schema;
 }
 
 _.mixin({ toSchema });
@@ -38,9 +46,27 @@ function pathParameters(str) {
     params = matches.map((m) => {
       const name = m.match(/^\{([^\}]+)\}$/)[1];
       let type = name.match(/id/) ? "integer" : "string";
-      return { id: "path", name, schema: { type } };
+      return { in: "path", name, schema: { type } };
     });
   }
   return params;
 }
 _.mixin({ pathParameters });
+
+// header:?token
+function toParameter(str) {
+  if (!_.isString(str)) return str;
+  let [type, name] = str.split(":");
+  let required = true;
+  if (name.match(/^\?/)) {
+    name = name.replace(/^\?/, "");
+    required = false;
+  }
+  return {
+    name,
+    in: type,
+    required,
+    type: "string"
+  }
+}
+_.mixin({ toParameter });

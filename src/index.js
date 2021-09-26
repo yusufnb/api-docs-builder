@@ -17,8 +17,8 @@ function reset() {
 }
 
 let overrides = {};
-function start(obj) {
-  overrides = obj;
+function start(opt) {
+  overrides = opt;
 }
 
 function end() {
@@ -30,74 +30,77 @@ function server(url, description) {
 }
 
 /**
-  obj = {path, method, tag=null, summary, description, 
+  opt = {path, method, tag=null, summary, description, 
       parameters=[], requestBody, 
       responses, 200,
       deprecated=false, prefix}
  */
-function api(obj) {
+function api(opt) {
   const spec = {};
-  Object.assign(obj, { parameters: [], responses: {} }, overrides);
-  if (obj.prefix) obj.path = obj.prefix + obj.path;
+  opt = Object.assign({}, { parameters: [], responses: {} }, overrides, opt);
+  if (opt.prefix) opt.path = opt.prefix + opt.path;
 
   // Parameters
-  const pathParams = _.pathParameters(obj.path);
-  if (pathParams.length > 0) obj.parameters = obj.parameters.concat(pathParams);
-  spec.parameters = obj.parameters;
+  opt.parameters = opt.parameters.map(param => _.toParameter(param));
+  const pathParams = _.pathParameters(opt.path);
+  if (pathParams.length > 0) opt.parameters = opt.parameters.concat(pathParams);
+  spec.parameters = opt.parameters;
 
   // Other attributes
-  if (obj.tag) spec.tags = [obj.tag];
-  if (obj.summary) spec.summary = obj.summary;
-  if (obj.description) spec.description = obj.description;
-  if (obj.deprecated) spec.deprecated = obj.deprecated;
+  if (opt.tag) spec.tags = [opt.tag];
+  if (opt.summary) spec.summary = opt.summary;
+  if (opt.description) spec.description = opt.description;
+  if (opt.deprecated) spec.deprecated = opt.deprecated;
 
   // Request
-  if (obj.method !== "get" && obj.requestBody && _.isString(obj.requestBody)) {
+  if (opt.method !== "get" && opt.requestBody && _.isString(opt.requestBody)) {
+    let schema = opt.requestBody.match(/^#/) ? { $ref : opt.requestBody } : _.toSchema(opt.requestBody);
     spec.requestBody = {
-      content: { "application/json": { schema: { $ref: obj.requestBody } } },
+      content: { "application/json": { schema } },
     };
   }
   // Responses
-  ['200', '201', '204', '400', '401', '403', '404', '500'].forEach((code) => {
-    if (_.isString(obj[code])) {
-      obj.responses[code] = {
-        content: { "application/json": { schema: { $ref: obj[code] } } },
+  Object.keys(opt).filter(k => k.match(/^[0-9]+$/)).forEach((code) => {
+    if (opt[code] && _.isString(opt[code])) {
+      let schema = opt[code].match(/^#/) ? { $ref : opt[code] } : _.toSchema(opt[code]);
+      opt.responses[code] = {
+        content: { "application/json": { schema } },
       };
     }
   });
-  spec.responses = obj.responses;
+  spec.responses = opt.responses;
 
-  _.set(paths, `${obj.path}.${obj.method}`, spec);
+  _.set(paths, `${opt.path}.${opt.method}`, spec);
 }
 
-function get(path = "", obj = {}) {
-  obj.method = "get";
-  obj.path = path;
-  api(obj);
+function get(path = "", opt = {}) {
+  opt.method = "get";
+  opt.path = path;
+  api(opt);
 }
 
-function post(path = "", obj = {}) {
-  obj.method = "post";
-  obj.path = path;
-  api(obj);
+function post(path = "", opt = {}) {
+  opt.method = "post";
+  opt.path = path;
+  api(opt);
 }
 
-function put(path = "", obj = {}) {
-  obj.method = "put";
-  obj.path = path;
-  api(obj);
+function put(path = "", opt = {}) {
+  opt.method = "put";
+  opt.path = path;
+  api(opt);
 }
 
-function patch(path = "", obj = {}) {
-  obj.method = "patch";
-  obj.path = path;
-  api(obj);
+function patch(path = "", opt = {}) {
+  opt.method = "patch";
+  opt.path = path;
+  api(opt);
 }
 
-function del(path = "", obj = {}) {
-  obj.method = "delete";
-  obj.path = path;
-  api(obj);
+function del(path = "", opt = {}) {
+  opt.method = "delete";
+  opt.path = path;
+  api(opt);
 }
 
 function ref({ type, name, def }) {
